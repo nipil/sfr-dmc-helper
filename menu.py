@@ -125,7 +125,7 @@ class Menu:
                 print k, ".", v.get_invite()
             print "q", ".", "Quitter"
             s = raw_input(">> ")
-            if s == 'q':
+            if s == 'q' or s == '':
                 return
             s = int(s)
             if s < 0 or s >= len(content):
