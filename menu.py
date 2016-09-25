@@ -19,6 +19,8 @@ class Parameters:
         self.scenario_id = None
         # phone menu
         self.phone_number = None
+        # broadcast menu
+        self.broadcast_id = None
 
     def load_config(self, file):
         self.current_config_file = file
@@ -50,29 +52,33 @@ class Api:
 
     def create_authenticate_params(self, cur_params, space = True):
         cur_params["authenticate"] = {
-            "serviceId": self.parameters.auth_service_id,
-            "servicePassword": self.parameters.auth_service_password,
+            "serviceId": str(self.parameters.auth_service_id),
+            "servicePassword": str(self.parameters.auth_service_password),
             "lang": "fr_FR"
         }
         if space:
             if self.parameters.auth_space is None:
                 raise Exception("Aucun espace sélectionné, veuillez sélectionner un espace d'abord")
-            cur_params["authenticate"]["spaceId"] = self.parameters.auth_space["id"]
+            cur_params["authenticate"]["spaceId"] = str(self.parameters.auth_space["id"])
         cur_params["authenticate"] = json.dumps(cur_params["authenticate"])
+
+    def create_broadcast_params(self, cur_params):
+        cur_params["broadcast"] = {
+            "callPlanningId": str(self.parameters.planning_id["id"]),
+            "scenarioId": str(self.parameters.scenario_id["id"]),
+            "broadcastName": "python helper diffusion %s" % time.strftime("%Y-%m-%d@%H:%M:%S")
+        }
+        cur_params["broadcast"] = json.dumps(cur_params["broadcast"])
 
     def post(self, url, content):
         t0 = time.time()
         r = requests.post(url, data = content)
         t1 = time.time()
         print "Requête exécutée en %f secondes" % (t1-t0)
-        try:
-            j = json.loads(r.text)
-            if not j["success"]:
-                raise Exception("Erreur lors de la requête. Données retournées : %s" % j)
-            return j
-        except Exception, e:
-            print e
-            raise
+        j = json.loads(r.text)
+        if not j["success"]:
+            raise Exception("Erreur lors de la requête. Données retournées : %s" % j)
+        return j
 
     def findSpaces(self):
         print "Récupération des espaces"
@@ -91,6 +97,13 @@ class Api:
         p = {}
         self.create_authenticate_params(p)
         return self.post("%s/BroadcastWS/findScenarii" % Api.BASE_URL, p)
+
+    def createBroadcast(self):
+        print "Création d'une diffusion"
+        p = {}
+        self.create_authenticate_params(p)
+        self.create_broadcast_params(p)
+        return self.post("%s/BroadcastWS/createBroadcast" % Api.BASE_URL, p)
 
 class Menu:
 
@@ -134,7 +147,7 @@ class Menu:
                 try:
                     content[s].run()
                 except Exception, e:
-                    print e
+                    print "ERREUR: %s" % e.message
                     s = None
 
     def interactValue(self, content):
@@ -170,7 +183,7 @@ class SpaceMenu(Menu):
             self.get_space()
         r = Menu.interactValue(self, self.spaces)
         self.parameters.auth_space = { "id": int(r), "desc": self.spaces[r] }
-        print "Espace sélectionné : %i" % self.parameters.auth_space
+        print "Espace sélectionné : %i" % self.parameters.auth_space["id"]
 
 class PlanningMenu(Menu):
 
@@ -192,7 +205,7 @@ class PlanningMenu(Menu):
             self.get_planning()
         r = Menu.interactValue(self, self.plannings)
         self.parameters.planning_id = { "id": int(r), "desc": self.plannings[r] }
-        print "Planning sélectionné : %i" % self.parameters.planning_id
+        print "Planning sélectionné : %i" % self.parameters.planning_id["id"]
 
 class ScenarioMenu(Menu):
 
@@ -218,7 +231,7 @@ class ScenarioMenu(Menu):
             self.get_scenario()
         r = Menu.interactValue(self, self.scenarios)
         self.parameters.scenario_id = { "id": int(r), "desc": self.scenarios[r] }
-        print "Scénario sélectionné : %i" % self.parameters.scenario_id
+        print "Scénario sélectionné : %i" % self.parameters.scenario_id["id"]
 
 class PhoneMenu(Menu):
 
@@ -239,7 +252,28 @@ class PhoneMenu(Menu):
                 break
             print "Numéro de téléphone invalide, utiliser le format international"
         self.parameters.phone_number = s
-        print "Numéro sélectionné : %i" % self.parameters.phone_number
+        print "Numéro sélectionné : %s" % self.parameters.phone_number
+
+class BroadcastMenu(Menu):
+
+    def __init__(self, parameters):
+        Menu.__init__(self, parameters, "Lancement de la diffusion")
+
+    def is_valid(self):
+        return (
+            self.parameters.auth_space is not None and
+            self.parameters.planning_id is not None and
+            self.parameters.scenario_id is not None and
+            self.parameters.phone_number is not None
+        )
+
+    def createBroadcast(self):
+        r = Api(self.parameters).createBroadcast()
+        self.parameters.broadcast_id = r["response"]["broadcastId"]
+
+    def run(self):
+        if self.parameters.broadcast_id is None:
+            self.createBroadcast()
 
 class MainMenu(Menu):
 
@@ -250,6 +284,7 @@ class MainMenu(Menu):
             PlanningMenu(self.parameters),
             ScenarioMenu(self.parameters),
             PhoneMenu(self.parameters),
+            BroadcastMenu(self.parameters),
         ]
 
     def run(self):
