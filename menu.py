@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# coding: utf-8
 
 import sys, ConfigParser
 
@@ -33,6 +34,44 @@ class Parameters:
         self.parse_auth(self.auth_config_file)
 
 
+class SpaceMenu:
+
+    def __init__(self, parameters):
+        self.parameters = parameters
+
+    def get_invite(self):
+        return "Sélection des espaces"
+
+    def run(self):
+        print "space menu"
+        pass
+
+class MainMenu:
+
+    def __init__(self, parameters):
+        self.parameters = parameters
+        self.menus = {
+            "1": SpaceMenu(self.parameters),
+        }
+
+    def get_invite(self):
+        return "Menu principal"
+
+    def run(self):
+        s = None
+        while True:
+            print self.get_invite()
+            for k, v in self.menus.iteritems():
+                print k + ".", v.get_invite()
+            print "x. Retour"
+            s = raw_input(" >> ")
+            if s == 'x':
+                return
+            elif s not in self.menus.keys():
+                continue
+            else:
+                self.menus[s].run()
+
 class App:
 
     AUTH_CONFIG_FILE = "auth.conf"
@@ -40,9 +79,10 @@ class App:
     def __init__(self):
         self.parameters = Parameters(App.AUTH_CONFIG_FILE)
         self.parameters.load_configs()
+        self.main_menu = MainMenu(self.parameters)
 
     def run(self):
-        pass
+        self.main_menu.run()
 
 if __name__ == "__main__":
     app = App()
