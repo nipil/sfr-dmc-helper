@@ -17,6 +17,8 @@ class Parameters:
         self.planning_id = None
         # scenario menu
         self.scenario_id = None
+        # phone menu
+        self.phone_number = None
 
     def load_config(self, file):
         self.current_config_file = file
@@ -114,6 +116,7 @@ class Menu:
             print "Espace : %s" % self.id_desc_to_str(self.parameters.auth_space)
             print "Planning : %s" % self.id_desc_to_str(self.parameters.planning_id)
             print u"Scénario : %s" % self.id_desc_to_str(self.parameters.scenario_id)
+            print "Numéro : %s" % self.parameters.phone_number
             print "-" * 70
             print self.get_invite()
             for k, v in enumerate(content):
@@ -217,6 +220,27 @@ class ScenarioMenu(Menu):
         self.parameters.scenario_id = { "id": int(r), "desc": self.scenarios[r] }
         print "Scénario sélectionné : %i" % self.parameters.scenario_id
 
+class PhoneMenu(Menu):
+
+    def __init__(self, parameters):
+        Menu.__init__(self, parameters, "Sélection du numéro (+33xxxxxxxxx)")
+        self.numero = None
+
+    def is_valid(self):
+        return True
+
+    def run(self):
+        r = re.compile(r"\+33\d{7}")
+        while True:
+            print "=" * 70
+            print self.get_invite()
+            s = raw_input(">> ")
+            if r.match(s):
+                break
+            print "Numéro de téléphone invalide, utiliser le format international"
+        self.parameters.phone_number = s
+        print "Numéro sélectionné : %i" % self.parameters.phone_number
+
 class MainMenu(Menu):
 
     def __init__(self, parameters):
@@ -225,6 +249,7 @@ class MainMenu(Menu):
             SpaceMenu(self.parameters),
             PlanningMenu(self.parameters),
             ScenarioMenu(self.parameters),
+            PhoneMenu(self.parameters),
         ]
 
     def run(self):
