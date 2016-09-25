@@ -90,12 +90,17 @@ class Menu:
     def get_invite(self):
         return self.menu_invite
 
+    def is_valid(self):
+        return True
+
     def interact(self, content):
         s = None
         while True:
             print "=" * 70
             print self.get_invite()
             for k, v in content.iteritems():
+                if not v.is_valid():
+                    continue
                 print k, ".", v.get_invite()
             print "x", ".", "Quitter"
             s = raw_input(">> ")
@@ -152,6 +157,9 @@ class PlanningMenu(Menu):
         Menu.__init__(self, "Sélection du planning")
         self.parameters = parameters
         self.plannings = None
+
+    def is_valid(self):
+        return self.parameters.auth_space is not None
 
     def get_planning(self):
         s = Api(self.parameters).findPlanning()
