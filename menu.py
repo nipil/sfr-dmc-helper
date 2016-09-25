@@ -80,11 +80,12 @@ class Api:
         }]
         cur_params["contact"] = json.dumps(cur_params["contact"])
 
-    def post(self, url, content):
+    def post(self, url, content, info=True):
         t0 = time.time()
         r = requests.post(url, data = content)
         t1 = time.time()
-        print "Requête exécutée en %f secondes" % (t1-t0)
+        if info:
+            print "Requête exécutée en %f secondes" % (t1-t0)
         j = json.loads(r.text)
         if not j["success"]:
             raise Exception("Erreur lors de la requête. Données retournées : %s" % j)
@@ -122,19 +123,21 @@ class Api:
         self.create_add_contact_params(p)
         return self.post("%s/BroadcastWS/addContactToBroadcast" % Api.BASE_URL, p)
 
-    def getBroadcast(self):
-        print "Récupération des informations de la diffusion"
+    def getBroadcast(self, info=True):
+        if info:
+            print "Récupération des informations de la diffusion"
         p = {}
         self.create_authenticate_params(p)
         self.create_broadcast_id_param(p)
-        return self.post("%s/BroadcastWS/getBroadcast" % Api.BASE_URL, p)
+        return self.post("%s/BroadcastWS/getBroadcast" % Api.BASE_URL, p, info)
 
-    def findBroadcastCra(self):
-        print "Récupération du compte rendu d'appel de la diffusion"
+    def findBroadcastCra(self, info=True):
+        if info:
+            print "Récupération du compte rendu d'appel de la diffusion"
         p = {}
         self.create_authenticate_params(p)
         self.create_broadcast_id_param(p)
-        return self.post("%s/SupervisionWS/findBroadcastCra" % Api.BASE_URL, p)
+        return self.post("%s/SupervisionWS/findBroadcastCra" % Api.BASE_URL, p, info)
 
     def activateBroadcast(self):
         print "Activation de la diffusion"
@@ -333,16 +336,14 @@ class BroadcastMenu(Menu):
 
     def activateBroadcast(self):
         r = Api(self.parameters).activateBroadcast()
-        print r
         return r
 
     def getBroadcastStatus(self):
-        r = Api(self.parameters).getBroadcast()
+        r = Api(self.parameters).getBroadcast(False)
         return r["response"]["statusCode"]
 
     def getBroadcastCra(self):
-        r = Api(self.parameters).findBroadcastCra()
-        print r
+        r = Api(self.parameters).findBroadcastCra(False)
         return r
 
     def waitForBroadcastCompletion(self):
@@ -352,7 +353,8 @@ class BroadcastMenu(Menu):
             status = self.getBroadcastStatus()
             cra = self.getBroadcastCra()
             if cra != last_cra:
-                print time.strftime("%Y-%m-%d@%H:%M:%S"), cra
+                print time.strftime("%Y-%m-%d@%H:%M:%S")
+                print cra
                 last_cra = cra
             if status != last_status_code:
                 print "Etat de la diffusion: %s" % status
@@ -362,15 +364,22 @@ class BroadcastMenu(Menu):
             time.sleep(1)
 
     def run(self):
+        print time.strftime("%Y-%m-%d@%H:%M:%S")
         if self.parameters.broadcast_id is None:
             self.createBroadcast()
+        print time.strftime("%Y-%m-%d@%H:%M:%S")
         self.addContactToBroadcast()
+        print time.strftime("%Y-%m-%d@%H:%M:%S")
         self.activateBroadcast()
+        print time.strftime("%Y-%m-%d@%H:%M:%S")
         self.waitForBroadcastCompletion()
+        print time.strftime("%Y-%m-%d@%H:%M:%S")
         cra = self.getBroadcastCra()
+        print time.strftime("%Y-%m-%d@%H:%M:%S")
         if self.parameters.broadcast_id is not None:
             self.dropBroadcast()
             self.parameters.broadcast_id = None
+        print time.strftime("%Y-%m-%d@%H:%M:%S")
 
 class MainMenu(Menu):
 
