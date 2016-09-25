@@ -85,7 +85,7 @@ class Menu:
             print self.get_invite()
             for k, v in content.iteritems():
                 print k, ".", v.get_invite()
-            print "x", ".", "Retour"
+            print "x", ".", "Quitter"
             s = raw_input(">> ")
             if s == 'x':
                 return
@@ -100,12 +100,8 @@ class Menu:
             print self.get_invite()
             for k, v in content.iteritems():
                 print k, ".", v
-            print "x", ".", "Retour"
             s = raw_input(">> ")
-            print { "aze" : s }
-            if s == 'x':
-                return None
-            elif s not in content.keys():
+            if s not in content.keys():
                 continue
             else:
                 return s
