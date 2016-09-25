@@ -70,6 +70,16 @@ class Api:
         }
         cur_params["broadcast"] = json.dumps(cur_params["broadcast"])
 
+    def create_add_contact_params(self, cur_params):
+        cur_params["broadcastId"] = str(self.parameters.broadcast_id)
+        cur_params["contact"] = [{
+            "phoneNumber1": self.parameters.phone_number,
+        }]
+        cur_params["contact"] = json.dumps(cur_params["contact"])
+
+    def create_drop_broadcast_params(self, cur_params):
+        cur_params["broadcastId"] = str(self.parameters.broadcast_id)
+
     def post(self, url, content):
         t0 = time.time()
         r = requests.post(url, data = content)
@@ -104,6 +114,20 @@ class Api:
         self.create_authenticate_params(p)
         self.create_broadcast_params(p)
         return self.post("%s/BroadcastWS/createBroadcast" % Api.BASE_URL, p)
+
+    def addContactToBroadcast(self):
+        print "Ajout du contact à la diffusion"
+        p = {}
+        self.create_authenticate_params(p)
+        self.create_add_contact_params(p)
+        return self.post("%s/BroadcastWS/addContactToBroadcast" % Api.BASE_URL, p)
+
+    def dropBroadcast(self):
+        print "Suppression de la diffusion"
+        p = {}
+        self.create_authenticate_params(p)
+        self.create_drop_broadcast_params(p)
+        return self.post("%s/BroadcastWS/dropBroadcast" % Api.BASE_URL, p)
 
 class Menu:
 
@@ -267,13 +291,35 @@ class BroadcastMenu(Menu):
             self.parameters.phone_number is not None
         )
 
+    def dropBroadcast(self):
+        r = Api(self.parameters).dropBroadcast()
+        if r["success"]:
+            print "Diffusion %s supprimée" % self.parameters.broadcast_id
+        else:
+            print "Erreur: %s" % r["errorDetail"]
+
     def createBroadcast(self):
         r = Api(self.parameters).createBroadcast()
         self.parameters.broadcast_id = r["response"]["broadcastId"]
+        print "Diffusion %s créée" % self.parameters.broadcast_id
+
+    def addContactToBroadcast(self):
+        r = Api(self.parameters).addContactToBroadcast()
+        if not r["response"][0]["saved"]:
+            raise Exception(r["response"][0]["error"])
+        else:
+            print "Contact ajouté (id %s)" % r["response"][0]["contactId"]
 
     def run(self):
+        # create
         if self.parameters.broadcast_id is None:
             self.createBroadcast()
+        # contact
+        self.addContactToBroadcast()
+        # delete
+        if self.parameters.broadcast_id is not None:
+            self.dropBroadcast()
+            self.parameters.broadcast_id = None
 
 class MainMenu(Menu):
 
