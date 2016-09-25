@@ -8,9 +8,13 @@ class Parameters:
     def __init__(self, auth_config_file):
         self.current_config_file = None
         self.auth_config_file = auth_config_file
+        # auth.conf
         self.auth_service_id = None
         self.auth_service_password = None
+        # space menu
         self.auth_space = None
+        # planning mennu
+        self.planning_id = None
 
     def load_config(self, file):
         self.current_config_file = file
@@ -40,7 +44,7 @@ class Api:
     def __init__(self, parameters):
         self.parameters = parameters
 
-    def create_authenticate_params(self, cur_params, space = False):
+    def create_authenticate_params(self, cur_params, space = True):
         cur_params["authenticate"] = {
             "serviceId": self.parameters.auth_service_id,
             "servicePassword": self.parameters.auth_service_password,
@@ -69,8 +73,14 @@ class Api:
     def findSpaces(self):
         print "Récupération des espaces"
         p = {}
-        self.create_authenticate_params(p)
+        self.create_authenticate_params(p, False)
         return self.post("%s/AdminWS/findSpaces" % Api.BASE_URL, p)
+
+    def findPlanning(self):
+        print "Récupération des plannings"
+        p = {}
+        self.create_authenticate_params(p)
+        return self.post("%s/PlanningWS/findPlanning" % Api.BASE_URL, p)
 
 class Menu:
 
@@ -94,7 +104,11 @@ class Menu:
             elif s not in content.keys():
                 continue
             else:
-                content[s].run()
+                try:
+                    content[s].run()
+                except Exception, e:
+                    print e
+                    s = None
 
     def interactValue(self, content):
         s = None
@@ -132,6 +146,26 @@ class SpaceMenu(Menu):
         self.parameters.auth_space = int(r)
         print "Espace sélectionné : %i" % self.parameters.auth_space
 
+class PlanningMenu(Menu):
+
+    def __init__(self, parameters):
+        Menu.__init__(self, "Sélection du planning")
+        self.parameters = parameters
+        self.plannings = None
+
+    def get_planning(self):
+        s = Api(self.parameters).findPlanning()
+        self.plannings = {}
+        for v in s["response"]:
+            self.plannings[str(v["planningId"])] = v["planningName"]
+
+    def run(self):
+        if self.plannings is None:
+            self.get_planning()
+        r = Menu.interactValue(self, self.plannings)
+        self.parameters.planning_id = int(r)
+        print "Planning sélectionné : %i" % self.parameters.planning_id
+
 class MainMenu(Menu):
 
     def __init__(self, parameters):
@@ -139,6 +173,7 @@ class MainMenu(Menu):
         self.parameters = parameters
         self.menus = {
             "1": SpaceMenu(self.parameters),
+            "2": PlanningMenu(self.parameters),
         }
 
     def run(self):
