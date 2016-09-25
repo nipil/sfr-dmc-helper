@@ -70,15 +70,15 @@ class Api:
         }
         cur_params["broadcast"] = json.dumps(cur_params["broadcast"])
 
-    def create_add_contact_params(self, cur_params):
+    def create_broadcast_id_param(self, cur_params):
         cur_params["broadcastId"] = str(self.parameters.broadcast_id)
+
+    def create_add_contact_params(self, cur_params):
+        self.create_broadcast_id_param(cur_params)
         cur_params["contact"] = [{
             "phoneNumber1": self.parameters.phone_number,
         }]
         cur_params["contact"] = json.dumps(cur_params["contact"])
-
-    def create_drop_broadcast_params(self, cur_params):
-        cur_params["broadcastId"] = str(self.parameters.broadcast_id)
 
     def post(self, url, content):
         t0 = time.time()
@@ -122,11 +122,32 @@ class Api:
         self.create_add_contact_params(p)
         return self.post("%s/BroadcastWS/addContactToBroadcast" % Api.BASE_URL, p)
 
+    def getBroadcast(self):
+        print "Récupération des informations de la diffusion"
+        p = {}
+        self.create_authenticate_params(p)
+        self.create_broadcast_id_param(p)
+        return self.post("%s/BroadcastWS/getBroadcast" % Api.BASE_URL, p)
+
+    def findBroadcastCra(self):
+        print "Récupération du compte rendu d'appel de la diffusion"
+        p = {}
+        self.create_authenticate_params(p)
+        self.create_broadcast_id_param(p)
+        return self.post("%s/SupervisionWS/findBroadcastCra" % Api.BASE_URL, p)
+
+    def activateBroadcast(self):
+        print "Activation de la diffusion"
+        p = {}
+        self.create_authenticate_params(p)
+        self.create_broadcast_id_param(p)
+        return self.post("%s/BroadcastWS/activateBroadcast" % Api.BASE_URL, p)
+
     def dropBroadcast(self):
         print "Suppression de la diffusion"
         p = {}
         self.create_authenticate_params(p)
-        self.create_drop_broadcast_params(p)
+        self.create_broadcast_id_param(p)
         return self.post("%s/BroadcastWS/dropBroadcast" % Api.BASE_URL, p)
 
 class Menu:
@@ -310,13 +331,43 @@ class BroadcastMenu(Menu):
         else:
             print "Contact ajouté (id %s)" % r["response"][0]["contactId"]
 
+    def activateBroadcast(self):
+        r = Api(self.parameters).activateBroadcast()
+        print r
+        return r
+
+    def getBroadcastStatus(self):
+        r = Api(self.parameters).getBroadcast()
+        return r["response"]["statusCode"]
+
+    def getBroadcastCra(self):
+        r = Api(self.parameters).findBroadcastCra()
+        print r
+        return r
+
+    def waitForBroadcastCompletion(self):
+        last_status_code = None
+        last_cra = None
+        while True:
+            status = self.getBroadcastStatus()
+            cra = self.getBroadcastCra()
+            if cra != last_cra:
+                print time.strftime("%Y-%m-%d@%H:%M:%S"), cra
+                last_cra = cra
+            if status != last_status_code:
+                print "Etat de la diffusion: %s" % status
+                last_status_code = status
+            if status == "BR_FINISHED":
+                break
+            time.sleep(1)
+
     def run(self):
-        # create
         if self.parameters.broadcast_id is None:
             self.createBroadcast()
-        # contact
         self.addContactToBroadcast()
-        # delete
+        self.activateBroadcast()
+        self.waitForBroadcastCompletion()
+        cra = self.getBroadcastCra()
         if self.parameters.broadcast_id is not None:
             self.dropBroadcast()
             self.parameters.broadcast_id = None
