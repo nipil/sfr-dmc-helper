@@ -67,6 +67,7 @@ class Api:
             raise
 
     def findSpaces(self):
+        print "Récupération des espaces"
         p = {}
         self.create_authenticate_params(p)
         return self.post("%s/AdminWS/findSpaces" % Api.BASE_URL, p)
@@ -82,6 +83,7 @@ class Menu:
     def interact(self, content):
         s = None
         while True:
+            print "=" * 70
             print self.get_invite()
             for k, v in content.iteritems():
                 print k, ".", v.get_invite()
@@ -97,6 +99,7 @@ class Menu:
     def interactValue(self, content):
         s = None
         while True:
+            print "=" * 70
             print self.get_invite()
             for k, v in content.iteritems():
                 print k, ".", v
@@ -169,5 +172,8 @@ class App:
         self.main_menu.run()
 
 if __name__ == "__main__":
-    app = App()
-    app.run()
+    try:
+        app = App()
+        app.run()
+    except KeyboardInterrupt:
+        pass
