@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import sys, ConfigParser, requests, json, time, logging
+import sys, ConfigParser, requests, json, time, logging, re
 
 class Parameters:
 
@@ -13,8 +13,10 @@ class Parameters:
         self.auth_service_password = None
         # space menu
         self.auth_space = None
-        # planning mennu
+        # planning menu
         self.planning_id = None
+        # scenario menu
+        self.scenario_id = None
 
     def load_config(self, file):
         self.current_config_file = file
@@ -53,7 +55,7 @@ class Api:
         if space:
             if self.parameters.auth_space is None:
                 raise Exception("Aucun espace sélectionné, veuillez sélectionner un espace d'abord")
-            cur_params["authenticate"]["spaceId"] = self.parameters.auth_space
+            cur_params["authenticate"]["spaceId"] = self.parameters.auth_space["id"]
         cur_params["authenticate"] = json.dumps(cur_params["authenticate"])
 
     def post(self, url, content):
@@ -82,9 +84,16 @@ class Api:
         self.create_authenticate_params(p)
         return self.post("%s/PlanningWS/findPlanning" % Api.BASE_URL, p)
 
+    def findScenarii(self):
+        print "Récupération des scenarii"
+        p = {}
+        self.create_authenticate_params(p)
+        return self.post("%s/BroadcastWS/findScenarii" % Api.BASE_URL, p)
+
 class Menu:
 
-    def __init__(self, invite):
+    def __init__(self, parameters, invite):
+        self.parameters = parameters
         self.menu_invite = invite
 
     def get_invite(self):
@@ -93,20 +102,30 @@ class Menu:
     def is_valid(self):
         return True
 
+    def id_desc_to_str(self, v):
+        if v is None:
+            return None
+        return "%s %s" % (v["id"], v["desc"])
+
     def interact(self, content):
         s = None
         while True:
             print "=" * 70
+            print "Espace : %s" % self.id_desc_to_str(self.parameters.auth_space)
+            print "Planning : %s" % self.id_desc_to_str(self.parameters.planning_id)
+            print u"Scénario : %s" % self.id_desc_to_str(self.parameters.scenario_id)
+            print "-" * 70
             print self.get_invite()
-            for k, v in content.iteritems():
+            for k, v in enumerate(content):
                 if not v.is_valid():
                     continue
                 print k, ".", v.get_invite()
-            print "x", ".", "Quitter"
+            print "q", ".", "Quitter"
             s = raw_input(">> ")
-            if s == 'x':
+            if s == 'q':
                 return
-            elif s not in content.keys():
+            s = int(s)
+            if s < 0 or s >= len(content):
                 continue
             else:
                 try:
@@ -131,8 +150,7 @@ class Menu:
 class SpaceMenu(Menu):
 
     def __init__(self, parameters):
-        Menu.__init__(self, "Sélection des espaces")
-        self.parameters = parameters
+        Menu.__init__(self, parameters, "Sélection des espaces")
         self.spaces = None
 
     def get_space(self):
@@ -148,14 +166,13 @@ class SpaceMenu(Menu):
         if self.spaces is None:
             self.get_space()
         r = Menu.interactValue(self, self.spaces)
-        self.parameters.auth_space = int(r)
+        self.parameters.auth_space = { "id": int(r), "desc": self.spaces[r] }
         print "Espace sélectionné : %i" % self.parameters.auth_space
 
 class PlanningMenu(Menu):
 
     def __init__(self, parameters):
-        Menu.__init__(self, "Sélection du planning")
-        self.parameters = parameters
+        Menu.__init__(self, parameters, "Sélection du planning")
         self.plannings = None
 
     def is_valid(self):
@@ -171,18 +188,44 @@ class PlanningMenu(Menu):
         if self.plannings is None:
             self.get_planning()
         r = Menu.interactValue(self, self.plannings)
-        self.parameters.planning_id = int(r)
+        self.parameters.planning_id = { "id": int(r), "desc": self.plannings[r] }
         print "Planning sélectionné : %i" % self.parameters.planning_id
+
+class ScenarioMenu(Menu):
+
+    def __init__(self, parameters):
+        Menu.__init__(self, parameters, "Sélection du scénario")
+        self.scenarios = None
+
+    def is_valid(self):
+        return self.parameters.auth_space is not None
+
+    def get_scenario(self):
+        s = Api(self.parameters).findScenarii()
+        self.scenarios = {}
+        r = re.compile(r"^is")
+        for v in s["response"]:
+            self.scenarios[str(v["scenarioId"])] = "%s (%s)" % (
+                v["scenarioName"],
+                ', '.join([ r.sub("", k) for k in ['isMms', 'isVocal', 'isEmail', 'isFax', 'isSms'] if v[k] ])
+            )
+
+    def run(self):
+        if self.scenarios is None:
+            self.get_scenario()
+        r = Menu.interactValue(self, self.scenarios)
+        self.parameters.scenario_id = { "id": int(r), "desc": self.scenarios[r] }
+        print "Scénario sélectionné : %i" % self.parameters.scenario_id
 
 class MainMenu(Menu):
 
     def __init__(self, parameters):
-        Menu.__init__(self, "Menu principal")
-        self.parameters = parameters
-        self.menus = {
-            "1": SpaceMenu(self.parameters),
-            "2": PlanningMenu(self.parameters),
-        }
+        Menu.__init__(self, parameters, "Menu principal")
+        self.menus = [
+            SpaceMenu(self.parameters),
+            PlanningMenu(self.parameters),
+            ScenarioMenu(self.parameters),
+        ]
 
     def run(self):
         Menu.interact(self, self.menus)
