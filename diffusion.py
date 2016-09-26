@@ -405,7 +405,7 @@ class App:
         numeric_level = getattr(logging, self.arguments.log.upper(), None)
         if not isinstance(numeric_level, int):
             raise ValueError('Niveau de log invalide: %s' % loglevel)
-        logging.basicConfig(level=numeric_level)
+        logging.basicConfig(level=numeric_level, format='%(asctime)s %(name)s %(levelname)s %(message)s')
         # try:
         #     import http.client as http_client
         # except ImportError:
