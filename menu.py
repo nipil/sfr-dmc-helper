@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import sys, ConfigParser, requests, json, time, logging, re
+import sys, ConfigParser, requests, json, time, logging, re, argparse
 
 class Parameters:
 
@@ -81,73 +81,73 @@ class Api:
         cur_params["contact"] = json.dumps(cur_params["contact"])
 
     def post(self, url, content, info=True):
+        logging.debug("Requests arguments : %s", content)
         t0 = time.time()
         r = requests.post(url, data = content)
         t1 = time.time()
-        if info:
-            print "Requête exécutée en %f secondes" % (t1-t0)
-        j = json.loads(r.text)
+        logging.debug("Requests duration : %s", t1 - t0)
+        t = r.text
+        logging.debug("Requests Reply : %s", t)
+        j = json.loads(t)
         if not j["success"]:
             raise Exception("Erreur lors de la requête. Données retournées : %s" % j)
         return j
 
     def findSpaces(self):
-        print "Récupération des espaces"
+        logging.info("Récupération des espaces")
         p = {}
         self.create_authenticate_params(p, False)
         return self.post("%s/AdminWS/findSpaces" % Api.BASE_URL, p)
 
     def findPlanning(self):
-        print "Récupération des plannings"
+        logging.info("Récupération des plannings")
         p = {}
         self.create_authenticate_params(p)
         return self.post("%s/PlanningWS/findPlanning" % Api.BASE_URL, p)
 
     def findScenarii(self):
-        print "Récupération des scenarii"
+        logging.info("Récupération des scenarii")
         p = {}
         self.create_authenticate_params(p)
         return self.post("%s/BroadcastWS/findScenarii" % Api.BASE_URL, p)
 
     def createBroadcast(self):
-        print "Création d'une diffusion"
+        logging.info("Création d'une diffusion")
         p = {}
         self.create_authenticate_params(p)
         self.create_broadcast_params(p)
         return self.post("%s/BroadcastWS/createBroadcast" % Api.BASE_URL, p)
 
     def addContactToBroadcast(self):
-        print "Ajout du contact à la diffusion"
+        logging.info("Ajout du contact à la diffusion")
         p = {}
         self.create_authenticate_params(p)
         self.create_add_contact_params(p)
         return self.post("%s/BroadcastWS/addContactToBroadcast" % Api.BASE_URL, p)
 
     def getBroadcast(self, info=True):
-        if info:
-            print "Récupération des informations de la diffusion"
+        logging.info("Récupération des informations de la diffusion")
         p = {}
         self.create_authenticate_params(p)
         self.create_broadcast_id_param(p)
         return self.post("%s/BroadcastWS/getBroadcast" % Api.BASE_URL, p, info)
 
     def findBroadcastCra(self, info=True):
-        if info:
-            print "Récupération du compte rendu d'appel de la diffusion"
+        logging.info("Récupération du compte rendu d'appel de la diffusion")
         p = {}
         self.create_authenticate_params(p)
         self.create_broadcast_id_param(p)
         return self.post("%s/SupervisionWS/findBroadcastCra" % Api.BASE_URL, p, info)
 
     def activateBroadcast(self):
-        print "Activation de la diffusion"
+        logging.info("Activation de la diffusion")
         p = {}
         self.create_authenticate_params(p)
         self.create_broadcast_id_param(p)
         return self.post("%s/BroadcastWS/activateBroadcast" % Api.BASE_URL, p)
 
     def dropBroadcast(self):
-        print "Suppression de la diffusion"
+        logging.info("Suppression de la diffusion")
         p = {}
         self.create_authenticate_params(p)
         self.create_broadcast_id_param(p)
@@ -298,7 +298,7 @@ class PhoneMenu(Menu):
             s = raw_input(">> ")
             if r.match(s):
                 break
-            print "Numéro de téléphone invalide, utiliser le format international"
+            raise Exception("Numéro de téléphone invalide, utiliser le format international")
         self.parameters.phone_number = s
         print "Numéro sélectionné : %s" % self.parameters.phone_number
 
@@ -340,7 +340,7 @@ class BroadcastMenu(Menu):
 
     def getBroadcastStatus(self):
         r = Api(self.parameters).getBroadcast(False)
-        return r["response"]["statusCode"]
+        return r
 
     def getBroadcastCra(self):
         r = Api(self.parameters).findBroadcastCra(False)
@@ -351,35 +351,30 @@ class BroadcastMenu(Menu):
         last_cra = None
         while True:
             status = self.getBroadcastStatus()
+            if status != last_status_code:
+                print "Etat de la diffusion : %s" % status["response"]["statusCode"]
+                last_status_code = status
             cra = self.getBroadcastCra()
             if cra != last_cra:
-                print time.strftime("%Y-%m-%d@%H:%M:%S")
-                print cra
+                l = cra["response"]["list"][0]
+                print "CRA actuel : %s (%s)" % (l["callResult"], l["callResultCode"])
                 last_cra = cra
-            if status != last_status_code:
-                print "Etat de la diffusion: %s" % status
-                last_status_code = status
             if status == "BR_FINISHED":
                 break
             time.sleep(1)
 
     def run(self):
-        print time.strftime("%Y-%m-%d@%H:%M:%S")
         if self.parameters.broadcast_id is None:
             self.createBroadcast()
-        print time.strftime("%Y-%m-%d@%H:%M:%S")
         self.addContactToBroadcast()
-        print time.strftime("%Y-%m-%d@%H:%M:%S")
         self.activateBroadcast()
-        print time.strftime("%Y-%m-%d@%H:%M:%S")
         self.waitForBroadcastCompletion()
-        print time.strftime("%Y-%m-%d@%H:%M:%S")
         cra = self.getBroadcastCra()
-        print time.strftime("%Y-%m-%d@%H:%M:%S")
+        l = cra["response"]["list"][0]
+        print "CRA final : %s (%s)" % (l["callResult"], l["callResultCode"])
         if self.parameters.broadcast_id is not None:
             self.dropBroadcast()
             self.parameters.broadcast_id = None
-        print time.strftime("%Y-%m-%d@%H:%M:%S")
 
 class MainMenu(Menu):
 
@@ -404,24 +399,34 @@ class App:
         self.parameters = Parameters(App.AUTH_CONFIG_FILE)
         self.parameters.load_configs()
         self.main_menu = MainMenu(self.parameters)
+        self.arguments = None
 
     def setup_logging(self):
-        logging.basicConfig()
-        if len(sys.argv) != 2 or sys.argv[1] != "--debug":
-            return
-        try:
-            import http.client as http_client
-        except ImportError:
-            import httplib as http_client
-            logging.getLogger().setLevel(logging.DEBUG)
-        http_client.HTTPConnection.debuglevel = 1
-        requests_log = logging.getLogger("requests.packages.urllib3")
-        requests_log.setLevel(logging.DEBUG)
-        requests_log.propagate = True
+        numeric_level = getattr(logging, self.arguments.log.upper(), None)
+        if not isinstance(numeric_level, int):
+            raise ValueError('Niveau de log invalide: %s' % loglevel)
+        logging.basicConfig(level=numeric_level)
+        # try:
+        #     import http.client as http_client
+        # except ImportError:
+        #     import httplib as http_client
+        #     logging.getLogger().setLevel(logging.DEBUG)
+        # http_client.HTTPConnection.debuglevel = 1
+        # requests_log = logging.getLogger("requests.packages.urllib3")
+        # requests_log.setLevel(numeric_level)
+        # requests_log.propagate = True
+
+    def parse_arguments(self):
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--menu', action='store_true', help='affiche les menus interactifs')
+        parser.add_argument('--log', help='choix du niveau de log', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL', 'EXCEPTION'], default='WARNING')
+        self.arguments = parser.parse_args()
 
     def run(self):
+        self.parse_arguments()
         self.setup_logging()
-        self.main_menu.run()
+        if self.arguments.menu :
+            self.main_menu.run()
 
 if __name__ == "__main__":
     try:
