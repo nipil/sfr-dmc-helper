@@ -352,10 +352,12 @@ class BroadcastMenu(Menu):
         while True:
             status = self.getBroadcastStatus()
             if status != last_status_code:
+                logging.info("Broadcast status has changed")
                 print "Etat de la diffusion : %s" % status["response"]["statusCode"]
                 last_status_code = status
             cra = self.getBroadcastCra()
             if cra != last_cra:
+                logging.info("Broadcast CRA has changed")
                 l = cra["response"]["list"][0]
                 print "CRA actuel : %s (%s)" % (l["callResult"], l["callResultCode"])
                 last_cra = cra
