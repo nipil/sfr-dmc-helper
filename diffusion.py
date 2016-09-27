@@ -361,7 +361,7 @@ class BroadcastMenu(Menu):
                 l = cra["response"]["list"][0]
                 print "CRA actuel : %s (%s)" % (l["callResult"], l["callResultCode"])
                 last_cra = cra
-            if status == "BR_FINISHED":
+            if status["response"]["statusCode"] == "BR_FINISHED":
                 break
             time.sleep(1)
 
