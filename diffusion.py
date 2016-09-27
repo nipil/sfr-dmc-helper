@@ -368,15 +368,20 @@ class BroadcastMenu(Menu):
     def run(self):
         if self.parameters.broadcast_id is None:
             self.createBroadcast()
-            self.addContactToBroadcast()
-            self.activateBroadcast()
-        self.waitForBroadcastCompletion()
-        cra = self.getBroadcastCra()
-        l = cra["response"]["list"][0]
-        print "CRA final : %s (%s)" % (l["callResult"], l["callResultCode"])
-        if self.parameters.broadcast_id is not None:
-            self.dropBroadcast()
-            self.parameters.broadcast_id = None
+        try:
+            if self.parameters.broadcast_id is not None:
+                self.addContactToBroadcast()
+                self.activateBroadcast()
+            self.waitForBroadcastCompletion()
+            cra = self.getBroadcastCra()
+            l = cra["response"]["list"][0]
+            print "CRA final : %s (%s)" % (l["callResult"], l["callResultCode"])
+        except Exception, e:
+            print "ERREUR: %s" % e.message
+        finally:
+            if self.parameters.broadcast_id is not None:
+                self.dropBroadcast()
+                self.parameters.broadcast_id = None
 
 class MainMenu(Menu):
 
