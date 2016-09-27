@@ -368,8 +368,8 @@ class BroadcastMenu(Menu):
     def run(self):
         if self.parameters.broadcast_id is None:
             self.createBroadcast()
-        self.addContactToBroadcast()
-        self.activateBroadcast()
+            self.addContactToBroadcast()
+            self.activateBroadcast()
         self.waitForBroadcastCompletion()
         cra = self.getBroadcastCra()
         l = cra["response"]["list"][0]
