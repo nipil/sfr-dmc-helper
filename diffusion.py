@@ -347,23 +347,25 @@ class BroadcastMenu(Menu):
         return r
 
     def waitForBroadcastCompletion(self):
+        print "%s : Début de l'attente de complétion" % time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         last_status_code = None
         last_cra = None
         while True:
             status = self.getBroadcastStatus()
             if status != last_status_code:
                 logging.info("Broadcast status has changed")
-                print "Etat de la diffusion : %s" % status["response"]["statusCode"]
+                print "%s : Etat de la diffusion : %s" % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), status["response"]["statusCode"])
                 last_status_code = status
             cra = self.getBroadcastCra()
             if cra != last_cra:
                 logging.info("Broadcast CRA has changed")
                 l = cra["response"]["list"][0]
-                print "CRA actuel : %s (%s)" % (l["callResult"], l["callResultCode"])
+                print "%s : CRA actuel : %s (%s)" % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), l["callResult"], l["callResultCode"])
                 last_cra = cra
             if status["response"]["statusCode"] == "BR_FINISHED":
                 break
             time.sleep(1)
+        print "%s : Fin de l'attente de complétion" % time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
     def run(self):
         if self.parameters.broadcast_id is None:
