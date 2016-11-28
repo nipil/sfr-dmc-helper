@@ -227,8 +227,7 @@ class SpaceMenu(Menu):
             )
 
     def run(self):
-        if self.spaces is None:
-            self.get_space()
+        self.get_space()
         r = Menu.interactValue(self, self.spaces)
         self.parameters.auth_space = { "id": int(r), "desc": self.spaces[r] }
         print "Espace sélectionné : %i" % self.parameters.auth_space["id"]
@@ -249,8 +248,7 @@ class PlanningMenu(Menu):
             self.plannings[str(v["planningId"])] = v["planningName"]
 
     def run(self):
-        if self.plannings is None:
-            self.get_planning()
+        self.get_planning()
         r = Menu.interactValue(self, self.plannings)
         self.parameters.planning_id = { "id": int(r), "desc": self.plannings[r] }
         print "Planning sélectionné : %i" % self.parameters.planning_id["id"]
@@ -275,8 +273,7 @@ class ScenarioMenu(Menu):
             )
 
     def run(self):
-        if self.scenarios is None:
-            self.get_scenario()
+        self.get_scenario()
         r = Menu.interactValue(self, self.scenarios)
         self.parameters.scenario_id = { "id": int(r), "desc": self.scenarios[r] }
         print "Scénario sélectionné : %i" % self.parameters.scenario_id["id"]
